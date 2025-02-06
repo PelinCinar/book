@@ -1,0 +1,185 @@
+const express = require('express');//web sunucumuzu oluşturmak içn kullanıyoruz bilyosun
+const path = require('path');//dosya yollarını birleştirelim
+const fs = require('fs');//dosya okuma yazma işlemlerimiz için modulümüz
+const { error } = require('console');
+const router = express.Router();//yolları tanımlamak içn kullanıyrıuz
+
+const bookData = path.join(__dirname,'..', 'books.json'); //anadizinde olduğu için dotları koydun pelina
+console.log(bookData); //dosyanın tam yolunu belirle yoksa karıştırıyor yav
+
+//!GET
+router.get("/", (req, res) => {
+  fs.readFile(bookData, "utf-8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Kitaplara ulaşılamadı." });
+    }
+    res.json(JSON.parse(data)); // Kitapları JSON olarak döndür
+  });
+});
+
+
+//!POST
+router.post("/", (req, res) => {
+  const { title, author, year, genre, pages } = req.body;//client tarafından gleen veriyi içeriyor biz bunu dest. ile titledir bir şeydir diye doğrudan değişkenlere atayoryız
+  
+  fs.readFile(bookData, "utf-8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Kitap verileri okunamadı." });
+    }
+
+    const books = JSON.parse(data);
+    const newId = books.length > 0 ? books[books.length - 1].id + 1 : 1;//yeni kitap için id oluşturalım otamatik elinle girme yav 
+    const newBook = {
+      id: newId,
+      title,
+      author,
+      year,
+      genre,
+      pages,
+    };
+
+    books.push(newBook);  // Yeni kitabı  mevcut kitaplara ekle pushla
+
+    // books.json dosyasını güncelle
+    fs.writeFile(bookData, JSON.stringify(books, null, 2), (err) => {
+      if (err) {
+        return res.status(500).json({ error: "Kitap verileri kaydedilemedi." });
+      }
+      res.status(201).json(newBook);
+    });//güncellenen kitap listesini books.jsona yazdırmış oluruz böylece
+  });
+});
+
+//!PUT
+
+router.put("/:id", (req, res) => {
+  const bookId = parseInt(req.params.id);
+  const { title, author, year, genre, pages } = req.body;
+
+  fs.readFile(bookData, "utf-8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Kitap verileri okunamıyor." });
+    }
+
+    let books = JSON.parse(data);
+    const bookIndex = books.findIndex((book) => book.id === bookId);
+
+    if (bookIndex === -1) {
+      return res.status(404).json({ error: "Kitap bulunamadı." });
+    }//kontrolll
+
+    books[bookIndex] = {
+      ...books[bookIndex],
+      title: title || books[bookIndex].title,
+      author: author || books[bookIndex].author,
+      year: year || books[bookIndex].year,
+      genre: genre || books[bookIndex].genre,
+      pages: pages || books[bookIndex].pages,
+    };
+
+    fs.writeFile(bookData, JSON.stringify(books, null, 2), (err) => {
+      if (err) {
+        return res.status(500).json({ error: "Kitap verileri güncellenemedi." });
+      }
+      res.status(200).json(books[bookIndex]);
+    });
+  });
+});
+
+//!DELETE
+router.delete("/:id", (req, res) => {
+  const bookId = parseInt(req.params.id);
+  fs.readFile(bookData, "utf-8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Kitap verilerini okuyamıyorum" });
+    }
+    const books = JSON.parse(data);
+    const updatedBooks = books.filter(book => book.id !== bookId);
+    
+    // Check if the book was found
+    if (updatedBooks.length === books.length) {
+      return res.status(404).json({ error: "Kitap bulunamadı" });
+    }
+
+    // Write the updated data to the file
+    fs.writeFile(bookData, JSON.stringify(updatedBooks), (err) => {
+      if (err) {
+        return res.status(500).json({ error: "Kitapları güncelleyemedik" });
+      }
+      // Send success response after writing the file
+      return res.status(200).json({ message: "Kitap başarıyla silindi" });
+    });
+  });
+});
+
+module.exports = router;
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
+
+const router = express.Router();
+const bookData = path.join(__dirname, '..', 'books.json');
+
+// Dosyadan veri okuma fonksiyonu
+const readData = (filePath) => {
+  try {
+    const data = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    return [];
+  }
+};
+
+// Dosyaya veri yazma fonksiyonu
+const writeData = (filePath, data) => {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+};
+
+//! GET - Tüm kitapları getir
+router.get("/", (req, res) => {
+  const books = readData(bookData);
+  res.json(books);
+});
+
+//! POST - Yeni kitap ekle
+router.post("/", (req, res) => {
+  const { title, author, year, genre, pages } = req.body;
+  const books = readData(bookData);
+  
+  const newId = books.length > 0 ? Math.max(...books.map(book => book.id)) + 1 : 1;
+  const newBook = { id: newId, title, author, year, genre, pages };
+
+  books.push(newBook);
+  writeData(bookData, books);
+
+  res.status(201).json(newBook);
+});
+
+//! PUT - Kitap güncelle
+router.put("/:id", (req, res) => {
+  const bookId = parseInt(req.params.id);
+  const { title, author, year, genre, pages } = req.body;
+  let books = readData(bookData);
+
+  const bookIndex = books.findIndex(book => book.id === bookId);
+  if (bookIndex === -1) return res.status(404).json({ error: "Kitap bulunamadı." });
+
+  books[bookIndex] = { ...books[bookIndex], title, author, year, genre, pages };
+  writeData(bookData, books);
+
+  res.json(books[bookIndex]);
+});
+
+//! DELETE - Kitap sil
+router.delete("/:id", (req, res) => {
+  const bookId = parseInt(req.params.id);
+  let books = readData(bookData);
+  
+  const updatedBooks = books.filter(book => book.id !== bookId);
+  if (updatedBooks.length === books.length) return res.status(404).json({ error: "Kitap bulunamadı." });
+
+  writeData(bookData, updatedBooks);
+  res.json({ message: "Kitap başarıyla silindi." });
+});
+
+module.exports = router;
