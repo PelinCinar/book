@@ -9,7 +9,7 @@ const bookData = path.join(__dirname, "..", "books.json"); //anadizinde olduğu 
 console.log(bookData); //dosyanın tam yolunu belirle yoksa karıştırıyor yav
 
 //!const fs = require('fs').promises; senkron yazdın başlangıçta ama async olması daha iyi olur bu modül ile düzelt.trycatchaçvekullan.
-
+//! GET istekleri body içermez url parametresi alır unutme yani istetek gövedisini kullanmaz ve hata dönmesi beklenmez . kullananlar var ama önerilmiyo
 //!VALIDATION
 function validateBook(req, res, next) {
   const { title, author, year, genre, pages } = req.body;
@@ -146,7 +146,7 @@ router.delete("/:id", (req, res) => {
       if (err) {
         return res.status(500).json({ error: "Kitapları güncelleyemedik" });
       }
-      return res.status(204).json({ message: "Kitap başarıyla silindi" });
+      return res.status(202).json({ message: "Kitap başarıyla silindi" });
     });
   });
 });
