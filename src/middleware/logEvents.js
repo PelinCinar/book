@@ -31,7 +31,7 @@ logEvents("Bu origine izin verilmedi", "errLog.log");
 const logger = (req, res, next) => {
   const message = `${req.method}\t${req.url}\t${req.headers.origin}`;
   logEvents(message, "reqLog.log");
-  next();
+  next();//next yazmazsak yapacağımız istek gitmez ya response göndermek lazım ya da next dememiz lazım
 };
 
 module.exports = { logEvents, logger };
